@@ -132,24 +132,39 @@ client.on("messageCreate", async (message) => {
 
     try {
       const player = createAudioPlayer();
-      const filePath = path.resolve("./asset/oputo.mp3"); // ไฟล์เสียงของคุณ
+      const filePath = path.join(process.cwd(), "asset", "oputo.mp3");
+      console.log("🎵 Attempting to play:", filePath);
+      
       const resource = createAudioResource(filePath, { inlineVolume: true });
       resource.volume.setVolume(1.0);
 
       player.play(resource);
       connection.subscribe(player);
 
-      player.on(AudioPlayerStatus.Playing, () => console.log("✅ Playing sound now!"));
-      player.on(AudioPlayerStatus.Idle, () => {
-        console.log("🛑 Finished playing, disconnecting...");
+      player.on(AudioPlayerStatus.Playing, () => {
+        console.log("✅ Playing sound now!");
+      });
+      
+      player.on("error", (error) => {
+        console.error("❌ Player error:", error);
         const conn = getVoiceConnection(voiceChannel.guild.id);
         if (conn) conn.destroy();
+      });
+
+      player.on(AudioPlayerStatus.Idle, () => {
+        console.log("🛑 Finished playing, disconnecting...");
+        setTimeout(() => {
+          const conn = getVoiceConnection(voiceChannel.guild.id);
+          if (conn) conn.destroy();
+        }, 1000);
       });
 
       message.reply("🎵 กำลังเล่นเสียง!");
     } catch (err) {
       console.error("❌ Error playing sound:", err);
-      message.reply("❌ เล่นเสียงไม่สำเร็จ");
+      message.reply("❌ เล่นเสียงไม่สำเร็จ: " + err.message);
+      const conn = getVoiceConnection(voiceChannel.guild.id);
+      if (conn) conn.destroy();
     }
     }
     await generateEmbed(message, "");
