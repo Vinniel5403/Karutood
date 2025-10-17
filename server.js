@@ -61,7 +61,7 @@ async function generateEmbed(userMessage, page) {
   const lastUsed = sdCooldown.get(userId) || 0;
   if (now - lastUsed < 15 * 60 * 1000) {
     const min = Math.ceil((15 * 60 * 1000 - (now - lastUsed)) / 60000);
-    await message.reply(`⏳ คุณต้องรออีก ${min} นาที ถึงจะใช้ sd ได้อีกครั้ง`);
+    await message.reply(`⏳ พี่ว่าน้องต้องรออีก ${min} นาที`);
     return;
   }
   sdCooldown.set(userId, now);
@@ -87,7 +87,7 @@ async function generateEmbed(userMessage, page) {
     const row = new ActionRowBuilder().addComponents(collectButton);
     await message.reply({ content: ShortsText, components: [row] });
   } else {
-    await message.reply("😢 ไม่พบ Shorts ที่ตรงตามเงื่อนไข กำลังสุ่มใหม่");
+    await message.reply("พี่ว่า Shorts พัง");
     generateEmbed(message, page);
   }
 }
@@ -176,7 +176,7 @@ client.on("messageCreate", async (message) => {
         files: [join(__dirname, "asset", "oputo.gif")],
       });
     }
-    if (!db) return message.reply("Database ยังไม่พร้อม ลองใหม่อีกครั้ง");
+    if (!db) return message.reply("พี่ว่า ฐานข้อมูลพัง");
 
     const userId = message.author.id;
     const rows = await db.all(
@@ -185,7 +185,7 @@ client.on("messageCreate", async (message) => {
     );
 
     if (rows.length === 0) {
-      await message.reply("คุณยังไม่มี Shorts ที่สะสมเลย!");
+      await message.reply("รู้มั้ยน้องพลาดตรงไหน น้องยังไม่มี Shorts สะสมเลย");
     } else {
       const itemsPerPage = 5;
       const totalPages = Math.ceil(rows.length / itemsPerPage);
