@@ -10,7 +10,6 @@ const count = 5;
 const keywords = [
   "Black People",
   "Instagram",
-  "nigga",
   "Fyp",
   "African",
   "Chinese",
@@ -20,6 +19,18 @@ const keywords = [
   "Oputo",
   "meme",
   "ไทย",
+  "chefhiro4898",
+  "CrunchycatLuna" ,
+  "BayashiTV_",
+  "cholay",
+  "PeeBaoKitchen",
+  "Bosscat4444",
+  "uma musume",
+  "JIMSURIYAV2",
+  "มาลี สวยมาก",
+  "Overboot",
+
+
 ];
 
 // ฟังก์ชันสุ่มคำ 0–2 คำ แล้วรวมด้วย OR
