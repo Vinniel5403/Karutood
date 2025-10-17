@@ -33,11 +33,7 @@ const __dirname = dirname(__filename);
 console.log("📦 Voice Dependencies:");
 console.log(generateDependencyReport());
 
-const ban_list = [
-  "หก",
-  "kd",
-  'กด',
-]
+const ban_list = ["หก", "kd", "กด"];
 
 // เปิด/สร้าง database
 let db;
@@ -54,13 +50,58 @@ let db;
   )`);
 })();
 
+async function voice(sound, gif, text, userMessage) {
+  const message = userMessage;
+  await message.reply({
+    content: text,
+    files: [join(__dirname, "asset", `${gif}.gif`)],
+  });
+
+  const voiceChannel = message.member?.voice?.channel;
+  if (!voiceChannel) {
+    return;
+  }
+
+  const connection = joinVoiceChannel({
+    channelId: voiceChannel.id,
+    guildId: voiceChannel.guild.id,
+    adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+    selfDeaf: false,
+    selfMute: false,
+  });
+
+  try {
+    const player = createAudioPlayer();
+    const audioPath = join(__dirname, "asset", `${sound}.mp3`);
+
+    const resource = createAudioResource(audioPath, {
+      inlineVolume: true,
+    });
+    resource.volume?.setVolume(2.0);
+
+    connection.subscribe(player);
+    player.play(resource);
+
+    player.on("error", (error) => {
+      connection.destroy();
+    });
+
+    player.on(AudioPlayerStatus.Idle, () => {
+      setTimeout(() => {
+        connection.destroy();
+      }, 500);
+    });
+  } catch (err) {
+    connection.destroy();
+  }
+}
 async function generateEmbed(userMessage, page) {
   const message = userMessage;
   const userId = message.author.id;
   const now = Date.now();
   const lastUsed = sdCooldown.get(userId) || 0;
-  if (now - lastUsed < 10 * 60 * 1000) {
-    const min = Math.ceil((10 * 60 * 1000 - (now - lastUsed)) / 60000);
+  if (now - lastUsed < 15 * 60 * 1000) {
+    const min = Math.ceil((15 * 60 * 1000 - (now - lastUsed)) / 60000);
     await message.reply(`⏳ พี่ว่าน้องต้องรออีก ${min} นาที`);
     return;
   }
@@ -120,51 +161,12 @@ client.on("messageCreate", async (message) => {
   }
 
   if (content.toLowerCase() === "sd" || ban_list.includes(content)) {
-    if (ban_list.includes(content)) {
-      await message.reply({
-        content: "รู้มั้ยเราพลาดเรื่องอะไร",
-        files: [join(__dirname, "asset", "oputo.gif")],
-      });
-
-      const voiceChannel = message.member?.voice?.channel;
-      if (!voiceChannel) {
-        return;
-      }
-
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: voiceChannel.guild.id,
-        adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-        selfDeaf: false,
-        selfMute: false,
-      });
-
-      try {
-        const player = createAudioPlayer();
-        const audioPath = join(__dirname, "asset", "oputo.mp3");
-
-        const resource = createAudioResource(audioPath, {
-          inlineVolume: true,
-        });
-        resource.volume?.setVolume(2.0);
-
-        connection.subscribe(player);
-        player.play(resource);
-
-        player.on("error", (error) => {
-          connection.destroy();
-        });
-
-        player.on(AudioPlayerStatus.Idle, () => {
-          setTimeout(() => {
-            connection.destroy();
-          }, 500);
-        });
-
-
-      } catch (err) {
-        connection.destroy();
-      }
+    if (content === "หก" || content === "กด") {
+      voice("oputo", "oputo", "รู้มั้ยเราพลาดเรื่องอะไร", message);
+    }
+    if (content === 'kd'){
+      voice("kd", "kd", "เหตุการณ์นี้แม่ง 1 ในล้านอะ", message);
+      return;
     }
     await generateEmbed(message, "");
   }
