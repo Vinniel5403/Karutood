@@ -4,7 +4,7 @@ import { configDotenv } from "dotenv";
 configDotenv();
 
 const API_KEY = process.env.API_KEY;
-const count = 3;
+const count = 10;
 
 // รายการ keyword แนว meme / viral / funny
 const keywords = [
