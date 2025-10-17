@@ -88,6 +88,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 
@@ -105,51 +106,7 @@ client.on("messageCreate", async (message) => {
   //   console.log(randomQuery());
   //  }
 
-  if (message.content.toLowerCase() === "testsound") {
-    const voiceChannel = message.member?.voice?.channel;
-    if (!voiceChannel) {
-      return message.reply("❌ คุณต้องอยู่ใน Voice Channel ก่อน");
-    }
 
-    const connection = joinVoiceChannel({
-      channelId: voiceChannel.id,
-      guildId: voiceChannel.guild.id,
-      adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-      selfDeaf: false,
-    });
-
-    // สร้าง sine wave 1 วินาที (48000 Hz, 16-bit, stereo)
-    const sampleRate = 48000;
-    const duration = 1; // 1 วินาที
-    const freq = 440; // 440Hz = A4
-    const samples = sampleRate * duration;
-    const buffer = Buffer.alloc(samples * 2 * 2); // 2 channels, 16-bit
-
-    for (let i = 0; i < samples; i++) {
-      const t = i / sampleRate;
-      const val = Math.floor(Math.sin(2 * Math.PI * freq * t) * 32767); // 16-bit
-      buffer.writeInt16LE(val, i * 4); // left
-      buffer.writeInt16LE(val, i * 4 + 2); // right
-    }
-
-    const stream = Readable.from([buffer]);
-    const resource = createAudioResource(stream, { inlineVolume: true });
-    resource.volume.setVolume(1.0);
-
-    const player = createAudioPlayer();
-    player.play(resource);
-    connection.subscribe(player);
-
-    player.on(AudioPlayerStatus.Playing, () =>
-      console.log("✅ Sine wave playing...")
-    );
-    player.on(AudioPlayerStatus.Idle, () => {
-      console.log("🛑 Finished, disconnecting...");
-      connection.destroy();
-    });
-
-    message.reply("🎵 กำลังเล่นเสียง sine wave 1 วินาที!");
-  }
 
   if (content === "oputo" && message.author.username === "vinniel_") {
     await generateEmbed(message, "oputo");
@@ -162,46 +119,38 @@ client.on("messageCreate", async (message) => {
         files: ["./asset/oputo.gif"],
       });
 
-      // ตรวจว่าคนพิมพ์อยู่ใน voice channel ไหม
       const voiceChannel = message.member?.voice?.channel;
-      if (!voiceChannel) {
-        return;
-      }
+    if (!voiceChannel) return message.reply("❌ คุณต้องอยู่ใน Voice Channel ก่อน");
 
-      // เข้าห้องเสียง
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: voiceChannel.guild.id,
-        adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-        selfDeaf: false,
+    // เข้าห้องเสียง
+    const connection = joinVoiceChannel({
+      channelId: voiceChannel.id,
+      guildId: voiceChannel.guild.id,
+      adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+      selfDeaf: false,
+    });
+
+    try {
+      const player = createAudioPlayer();
+      const filePath = path.resolve("./asset/oputo.mp3"); // ไฟล์เสียงของคุณ
+      const resource = createAudioResource(filePath, { inlineVolume: true });
+      resource.volume.setVolume(1.0);
+
+      player.play(resource);
+      connection.subscribe(player);
+
+      player.on(AudioPlayerStatus.Playing, () => console.log("✅ Playing sound now!"));
+      player.on(AudioPlayerStatus.Idle, () => {
+        console.log("🛑 Finished playing, disconnecting...");
+        const conn = getVoiceConnection(voiceChannel.guild.id);
+        if (conn) conn.destroy();
       });
 
-      try {
-        const player = createAudioPlayer();
-        const filePath = path.resolve("./asset/oputo.mp3");
-        console.log("🎵 Trying to play:", filePath);
-
-        const resource = createAudioResource(filePath);
-
-        player.play(resource);
-        connection.subscribe(player);
-
-        player.on("error", (err) => {
-          console.error("❌ Player error:", err);
-        });
-
-        player.on(AudioPlayerStatus.Playing, () => {
-          console.log("✅ Playing sound now!");
-        });
-
-        player.on(AudioPlayerStatus.Idle, () => {
-          console.log("🛑 Finished playing, disconnecting...");
-          const conn = getVoiceConnection(voiceChannel.guild.id);
-          if (conn) conn.destroy();
-        });
-      } catch (err) {
-        console.error("Error playing sound:", err);
-      }
+      message.reply("🎵 กำลังเล่นเสียง!");
+    } catch (err) {
+      console.error("❌ Error playing sound:", err);
+      message.reply("❌ เล่นเสียงไม่สำเร็จ");
+    }
     }
     await generateEmbed(message, "");
   }
