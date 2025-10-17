@@ -130,6 +130,14 @@ client.on("messageCreate", async (message) => {
         guildId: voiceChannel.guild.id,
         adapterCreator: voiceChannel.guild.voiceAdapterCreator,
         selfDeaf: false,
+        selfMute: false,
+      });
+
+      // บังคับใช้ encryption แบบเก่าเพื่อหลีกเลี่ยง DAVE
+      connection.on('stateChange', (oldState, newState) => {
+        if (newState.status === 'ready') {
+          console.log('✅ Voice connection ready');
+        }
       });
 
       try {
