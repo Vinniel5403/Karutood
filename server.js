@@ -119,8 +119,8 @@ client.on("messageCreate", async (message) => {
     await generateEmbed(message, "oputo");
   }
 
-  if (content.toLowerCase() === "sd" || content in ban_list) {
-    if (content in ban_list) {
+  if (content.toLowerCase() === "sd" || ban_list.includes(content)) {
+    if (ban_list.includes(content)) {
       await message.reply({
         content: "รู้มั้ยเราพลาดเรื่องอะไร",
         files: [join(__dirname, "asset", "oputo.gif")],
