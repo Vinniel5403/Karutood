@@ -35,11 +35,21 @@ const keywords = [
 
 // ฟังก์ชันสุ่มคำ 3–5 คำ แล้วรวมด้วย OR
 export function randomQuery() {
-  const num = Math.floor(Math.random() * 3 + 5); // เลือก3-5คำ
-  const shuffled = keywords.sort(() => 0.5 - Math.random());
-  const selected = shuffled.slice(0, num);
+  const num = Math.floor(Math.random() * 3 + 3); // เลือก 3-5 คำ (แก้เลขให้ตรงตามต้องการ)
+  const selected = [];
+  const usedIndexes = new Set();
+
+  while (selected.length < num) {
+    const idx = Math.floor(Math.random() * keywords.length);
+    if (!usedIndexes.has(idx)) {
+      usedIndexes.add(idx);
+      selected.push(keywords[idx]);
+    }
+  }
+
   return selected.join(" OR ");
 }
+
 
 // แปลง ISO 8601 duration เป็นวินาที
 function parseDuration(duration) {
