@@ -155,7 +155,7 @@ client.on("messageCreate", async (message) => {
           }, 500);
         });
 
-        await message.reply("🎵 กำลังเล่นเสียง!");
+
       } catch (err) {
         connection.destroy();
       }
