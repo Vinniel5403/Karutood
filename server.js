@@ -115,10 +115,10 @@ client.on("messageCreate", async (message) => {
 
   if (content.toLowerCase() === "sd" || content === "หก") {
     if (content === "หก") {
-      await message.reply({
-        content: "รู้มั้ยเราพลาดเรื่องอะไร",
-        files: [join(__dirname, "asset", "oputo.gif")],
-      });
+      // await message.reply({
+      //   content: "รู้มั้ยเราพลาดเรื่องอะไร",
+      //   files: [join(__dirname, "asset", "oputo.gif")],
+      // });
 
       const voiceChannel = message.member?.voice?.channel;
       if (!voiceChannel) {
