@@ -99,7 +99,7 @@ client.on("messageCreate", async (message) => {
   }
   if (content.toLowerCase() === "sd" || content=== "หก") {
     if (content === "หก"){
-    message.reply("น้องรู้มั้ยน้องพลาดตรงไหน");
+    message.reply({ content: "น้องรู้มั้ยน้องพลาดตรงไหน", files: ["./asset/oputo.mp4"] });
     }
     await generateEmbed(message, "");
   }
@@ -107,7 +107,7 @@ client.on("messageCreate", async (message) => {
   // เพิ่มคำสั่ง !collection
   if (content.toLowerCase() === "sc" || content === "หแ") {
     if (content === "หแ") {
-      message.reply("น้องรู้มั้ยน้องพลาดตรงไหน");
+      message.reply({ content: "น้องรู้มั้ยน้องพลาดตรงไหน", files: ["./asset/oputo.mp4"] });
     }
     if (!db) return message.reply("Database ยังไม่พร้อม ลองใหม่อีกครั้ง");
     const userId = message.author.id;
