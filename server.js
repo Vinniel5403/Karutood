@@ -10,8 +10,12 @@ import {
   InteractionType,
 } from "discord.js";
 import getRandomMemeShorts, { randomQuery } from "./fetch.js";
+import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, getVoiceConnection } from "@discordjs/voice";
+import path from "path";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
+import dotenv from "dotenv";
+dotenv.config();
 
 // เปิด/สร้าง database
 let db;
@@ -62,7 +66,7 @@ async function generateEmbed(userMessage, page) {
     await message.reply({ content: ShortsText, components: [row] });
   } else {
     await message.reply("😢 ไม่พบ Shorts ที่ตรงตามเงื่อนไข กำลังสุ่มใหม่");
-    generateEmbed(message,page);
+    generateEmbed(message, page);
   }
 }
 
@@ -97,9 +101,45 @@ client.on("messageCreate", async (message) => {
   if (content === "oputo" && message.author.username === "vinniel_") {
     await generateEmbed(message, "oputo");
   }
-  if (content.toLowerCase() === "sd" || content=== "หก") {
-    if (content === "หก"){
-    message.reply({ content: "น้องรู้มั้ยน้องพลาดตรงไหน", files: ["./asset/oputo.gif"] });
+  if (content.toLowerCase() === "sd" || content === "หก") {
+    if (content === "หก") {
+      // ส่งข้อความพร้อม gif
+      await message.reply({
+        content: "น้องรู้มั้ยน้องพลาดตรงไหน",
+        files: ["./asset/oputo.gif"],
+      });
+
+      // ตรวจว่าคนพิมพ์อยู่ใน voice channel ไหม
+      const voiceChannel = message.member?.voice?.channel;
+      if (!voiceChannel) {
+        return;
+      }
+
+      // เข้าห้องเสียง
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: voiceChannel.guild.id,
+        adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+        selfDeaf: false,
+      });
+
+      try {
+        // สร้าง player และ resource
+        const player = createAudioPlayer();
+        const resource = createAudioResource(path.resolve("./asset/oputo.mp3"));
+
+        // เล่นเสียง
+        player.play(resource);
+        connection.subscribe(player);
+
+        // รอให้เล่นจบแล้วออกจากห้อง
+        player.on(AudioPlayerStatus.Idle, () => {
+          const conn = getVoiceConnection(voiceChannel.guild.id);
+          if (conn) conn.destroy();
+        });
+      } catch (error) {
+        console.error("❌ Error playing sound:", error);
+      }
     }
     await generateEmbed(message, "");
   }
@@ -107,7 +147,10 @@ client.on("messageCreate", async (message) => {
   // เพิ่มคำสั่ง !collection
   if (content.toLowerCase() === "sc" || content === "หแ") {
     if (content === "หแ") {
-      message.reply({ content: "น้องรู้มั้ยน้องพลาดตรงไหน", files: ["./asset/oputo.gif"] });
+      message.reply({
+        content: "น้องรู้มั้ยน้องพลาดตรงไหน",
+        files: ["./asset/oputo.gif"],
+      });
     }
     if (!db) return message.reply("Database ยังไม่พร้อม ลองใหม่อีกครั้ง");
     const userId = message.author.id;
