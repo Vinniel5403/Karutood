@@ -4,7 +4,7 @@ import { configDotenv } from "dotenv";
 configDotenv();
 
 const API_KEY = process.env.API_KEY;
-const count = 5;
+const count = 3;
 
 // รายการ keyword แนว meme / viral / funny
 const keywords = [
@@ -33,9 +33,9 @@ const keywords = [
 
 ];
 
-// ฟังก์ชันสุ่มคำ 0–2 คำ แล้วรวมด้วย OR
+// ฟังก์ชันสุ่มคำ 3–5 คำ แล้วรวมด้วย OR
 export function randomQuery() {
-  const num = Math.floor(Math.random() * 3+2); // เลือก0-2คำ
+  const num = Math.floor(Math.random() * 3 + 5); // เลือก3-5คำ
   const shuffled = keywords.sort(() => 0.5 - Math.random());
   const selected = shuffled.slice(0, num);
   return selected.join(" OR ");
