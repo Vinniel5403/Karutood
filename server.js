@@ -59,8 +59,8 @@ async function generateEmbed(userMessage, page) {
   const userId = message.author.id;
   const now = Date.now();
   const lastUsed = sdCooldown.get(userId) || 0;
-  if (now - lastUsed < 0 * 60 * 1000) {
-    const min = Math.ceil((0 * 60 * 1000 - (now - lastUsed)) / 60000);
+  if (now - lastUsed < 10 * 60 * 1000) {
+    const min = Math.ceil((10 * 60 * 1000 - (now - lastUsed)) / 60000);
     await message.reply(`⏳ พี่ว่าน้องต้องรออีก ${min} นาที`);
     return;
   }

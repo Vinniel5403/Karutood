@@ -35,7 +35,7 @@ const keywords = [
 
 // ฟังก์ชันสุ่มคำ 3–5 คำ แล้วรวมด้วย OR
 export function randomQuery() {
-  const num = Math.floor(Math.random() * 3 + 3); // เลือก 3-5 คำ (แก้เลขให้ตรงตามต้องการ)
+  const num = Math.floor(Math.random() * 3 + 1); // เลือก 3-5 คำ (แก้เลขให้ตรงตามต้องการ)
   const selected = [];
   const usedIndexes = new Set();
 
