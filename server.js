@@ -9,9 +9,6 @@ import {
   ComponentType,
   InteractionType,
 } from "discord.js";
-import ffmpeg from 'ffmpeg-static';
-process.env.FFMPEG_PATH = ffmpeg;
-import { Readable } from "stream";
 import getRandomMemeShorts, { randomQuery } from "./fetch.js";
 import {
   joinVoiceChannel,
@@ -19,12 +16,22 @@ import {
   createAudioResource,
   AudioPlayerStatus,
   getVoiceConnection,
+  generateDependencyReport,
 } from "@discordjs/voice";
-import path from "path";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 import dotenv from "dotenv";
 dotenv.config();
+
+// สร้าง __dirname สำหรับ ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// ตรวจสอบ dependencies ตอนเริ่มต้น
+console.log("📦 Voice Dependencies:");
+console.log(generateDependencyReport());
 
 // เปิด/สร้าง database
 let db;
@@ -79,13 +86,11 @@ async function generateEmbed(userMessage, page) {
   }
 }
 
-const sdCooldown = new Map(); // userId -> timestamp
-const takeCooldown = new Map(); // userId -> timestamp
+const sdCooldown = new Map();
+const takeCooldown = new Map();
 const targetChannel = "peace-droper";
-// const targetChannel = "darin-test";
-const client = new Client({
-  // Cooldown map
 
+const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
@@ -95,114 +100,105 @@ const client = new Client({
 });
 
 client.on(Events.ClientReady, (readyClient) => {
-  console.log(`Logged in as ${readyClient.user.tag}!`);
+  console.log(`✅ Logged in as ${readyClient.user.tag}!`);
 });
 
 client.on("messageCreate", async (message) => {
-  // Ignore bot messages
   if (message.author.bot) return;
   if (message.channel.name !== targetChannel) return;
 
   const content = message.content;
-  //  if (content ==='test'){
-  //   console.log(randomQuery());
-  //  }
-
-
 
   if (content === "oputo" && message.author.username === "vinniel_") {
     await generateEmbed(message, "oputo");
   }
+
   if (content.toLowerCase() === "sd" || content === "หก") {
     if (content === "หก") {
-      // ส่งข้อความพร้อม gif
       await message.reply({
         content: "น้องรู้มั้ยน้องพลาดตรงไหน",
-        files: ["./asset/oputo.gif"],
+        files: [join(__dirname, "asset", "oputo.gif")],
       });
 
       const voiceChannel = message.member?.voice?.channel;
-    if (!voiceChannel) return message.reply("❌ คุณต้องอยู่ใน Voice Channel ก่อน");
+      if (!voiceChannel) {
+        return message.reply("❌ คุณต้องอยู่ใน Voice Channel ก่อน");
+      }
 
-    // เข้าห้องเสียง
-    const connection = joinVoiceChannel({
-      channelId: voiceChannel.id,
-      guildId: voiceChannel.guild.id,
-      adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-      selfDeaf: false,
-    });
-
-    try {
-      const player = createAudioPlayer();
-      const filePath = path.join(process.cwd(), "asset", "oputo.mp3");
-      console.log("🎵 Attempting to play:", filePath);
-      
-      const resource = createAudioResource(filePath, { inlineVolume: true });
-      resource.volume.setVolume(1.0);
-
-      player.play(resource);
-      connection.subscribe(player);
-
-      player.on(AudioPlayerStatus.Playing, () => {
-        console.log("✅ Playing sound now!");
-      });
-      
-      player.on("error", (error) => {
-        console.error("❌ Player error:", error);
-        const conn = getVoiceConnection(voiceChannel.guild.id);
-        if (conn) conn.destroy();
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: voiceChannel.guild.id,
+        adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+        selfDeaf: false,
       });
 
-      player.on(AudioPlayerStatus.Idle, () => {
-        console.log("🛑 Finished playing, disconnecting...");
-        setTimeout(() => {
-          const conn = getVoiceConnection(voiceChannel.guild.id);
-          if (conn) conn.destroy();
-        }, 1000);
-      });
+      try {
+        const player = createAudioPlayer();
+        const audioPath = join(__dirname, "asset", "oputo.mp3");
+        console.log("🎵 Audio file path:", audioPath);
 
-      message.reply("🎵 กำลังเล่นเสียง!");
-    } catch (err) {
-      console.error("❌ Error playing sound:", err);
-      message.reply("❌ เล่นเสียงไม่สำเร็จ: " + err.message);
-      const conn = getVoiceConnection(voiceChannel.guild.id);
-      if (conn) conn.destroy();
-    }
+        const resource = createAudioResource(audioPath, {
+          inlineVolume: true,
+        });
+        resource.volume?.setVolume(1.0);
+
+        connection.subscribe(player);
+        player.play(resource);
+
+        player.on(AudioPlayerStatus.Playing, () => {
+          console.log("✅ Now playing audio!");
+        });
+
+        player.on("error", (error) => {
+          console.error("❌ Audio player error:", error);
+          connection.destroy();
+        });
+
+        player.on(AudioPlayerStatus.Idle, () => {
+          console.log("🛑 Audio finished");
+          setTimeout(() => {
+            connection.destroy();
+          }, 500);
+        });
+
+        await message.reply("🎵 กำลังเล่นเสียง!");
+      } catch (err) {
+        console.error("❌ Error:", err);
+        await message.reply(`❌ เกิดข้อผิดพลาด: ${err.message}`);
+        connection.destroy();
+      }
     }
     await generateEmbed(message, "");
   }
 
-  // เพิ่มคำสั่ง !collection
   if (content.toLowerCase() === "sc" || content === "หแ") {
     if (content === "หแ") {
       message.reply({
         content: "น้องรู้มั้ยน้องพลาดตรงไหน",
-        files: ["./asset/oputo.gif"],
+        files: [join(__dirname, "asset", "oputo.gif")],
       });
     }
     if (!db) return message.reply("Database ยังไม่พร้อม ลองใหม่อีกครั้ง");
+    
     const userId = message.author.id;
     const rows = await db.all(
       "SELECT ShortsTitle, ShortsUrl FROM collections WHERE userId = ?",
       userId
     );
+    
     if (rows.length === 0) {
       await message.reply("คุณยังไม่มี Shorts ที่สะสมเลย!");
     } else {
-      // --- pagination setup ---
-      const itemsPerPage = 5; // จำนวนลิงก์ต่อหน้า
+      const itemsPerPage = 5;
       const totalPages = Math.ceil(rows.length / itemsPerPage);
       let page = 0;
 
-      const generateEmbed = (page) => {
+      const generatePageEmbed = (page) => {
         const start = page * itemsPerPage;
         const end = start + itemsPerPage;
         const list = rows
           .slice(start, end)
-          .map(
-            (row, i) =>
-              `${start + i + 1}. [${row.ShortsTitle}](${row.ShortsUrl})`
-          )
+          .map((row, i) => `${start + i + 1}. [${row.ShortsTitle}](${row.ShortsUrl})`)
           .join("\n");
 
         return new EmbedBuilder()
@@ -224,81 +220,75 @@ client.on("messageCreate", async (message) => {
       );
 
       const sentMessage = await message.reply({
-        embeds: [generateEmbed(page)],
+        embeds: [generatePageEmbed(page)],
         components: [row],
-        ephemeral: true,
       });
 
       const collector = sentMessage.createMessageComponentCollector({
         componentType: ComponentType.Button,
-        time: 120000, // 2 นาที
+        time: 120000,
       });
 
       collector.on("collect", (i) => {
-        if (i.user.id !== message.author.id)
+        if (i.user.id !== message.author.id) {
           return i.reply({ content: "คุณไม่สามารถกดได้!", ephemeral: true });
+        }
 
         if (i.customId === "prev") page = page > 0 ? page - 1 : totalPages - 1;
         if (i.customId === "next") page = (page + 1) % totalPages;
 
-        i.update({ embeds: [generateEmbed(page)] });
+        i.update({ embeds: [generatePageEmbed(page)] });
       });
 
       collector.on("end", () => {
-        sentMessage.edit({ components: [] }); // ปิดปุ่มเมื่อหมดเวลา
+        sentMessage.edit({ components: [] });
       });
     }
   }
+});
 
-  // รับ interaction จากปุ่มสะสม
-  client.on(Events.InteractionCreate, async (interaction) => {
-    if (interaction.type !== InteractionType.MessageComponent) return;
-    if (!interaction.customId.startsWith("collect_")) return;
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.type !== InteractionType.MessageComponent) return;
+  if (!interaction.customId.startsWith("collect_")) return;
 
-    const userId = interaction.user.id;
-    const now = Date.now();
-    const lastTake = takeCooldown.get(userId) || 0;
-    if (now - lastTake < 5 * 60 * 1000) {
-      // แจ้ง cooldown ในห้อง Karutood
+  const userId = interaction.user.id;
+  const now = Date.now();
+  const lastTake = takeCooldown.get(userId) || 0;
+  
+  if (now - lastTake < 5 * 60 * 1000) {
+    return;
+  }
+  
+  takeCooldown.set(userId, now);
+  const ShortsUrl = interaction.customId.replace("collect_", "");
 
-      return;
-    }
-    takeCooldown.set(userId, now);
-    const ShortsUrl = interaction.customId.replace("collect_", "");
+  await interaction.deferUpdate().catch(() => {});
 
-    // deferUpdate แค่ครั้งเดียว
-    await interaction.deferUpdate().catch(() => {}); // ป้องกัน error ถ้า already acknowledged
+  if (!db) return;
 
-    if (!db) return;
+  const exists = await db.get(
+    "SELECT 1 FROM collections WHERE userId = ? AND ShortsUrl = ?",
+    userId,
+    ShortsUrl
+  );
 
-    // ตรวจสอบว่ามีแล้วหรือยัง
-    const exists = await db.get(
-      "SELECT 1 FROM collections WHERE userId = ? AND ShortsUrl = ?",
-      userId,
-      ShortsUrl
-    );
+  if (exists) return;
 
-    if (exists) return; // มีแล้วไม่ทำอะไร
+  const ShortsTitle = interaction.message.content.split("\n")[0] || ShortsUrl;
 
-    // ดึงชื่อ Shorts จากข้อความเดิม
-    const ShortsTitle = interaction.message.content.split("\n")[0] || ShortsUrl;
+  await db.run(
+    "INSERT OR IGNORE INTO collections (userId, ShortsUrl, ShortsTitle) VALUES (?, ?, ?)",
+    userId,
+    ShortsUrl,
+    ShortsTitle
+  );
 
-    // เพิ่มลง DB
-    await db.run(
-      "INSERT OR IGNORE INTO collections (userId, ShortsUrl, ShortsTitle) VALUES (?, ?, ?)",
-      userId,
-      ShortsUrl,
-      ShortsTitle
-    );
-
-    // แก้ไขข้อความเดิม ปิดปุ่ม
-    await interaction.message
-      .edit({
-        content: `${interaction.message.content}\n\n <@${userId}> สะสม Shorts นี้แล้ว!  ❌`,
-        components: [],
-      })
-      .catch(() => {});
-  });
+  await interaction.message
+    .edit({
+      content: `${interaction.message.content}\n\n<@${userId}> สะสม Shorts นี้แล้ว! ❌`,
+      components: [],
+    })
+    .catch(() => {});
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN);
