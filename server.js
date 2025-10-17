@@ -10,7 +10,13 @@ import {
   InteractionType,
 } from "discord.js";
 import getRandomMemeShorts, { randomQuery } from "./fetch.js";
-import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, getVoiceConnection } from "@discordjs/voice";
+import {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+  getVoiceConnection,
+} from "@discordjs/voice";
 import path from "path";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
@@ -124,21 +130,30 @@ client.on("messageCreate", async (message) => {
       });
 
       try {
-        // สร้าง player และ resource
         const player = createAudioPlayer();
-        const resource = createAudioResource(path.resolve("./asset/oputo.mp3"));
+        const filePath = path.resolve("./asset/oputo.mp3");
+        console.log("🎵 Trying to play:", filePath);
 
-        // เล่นเสียง
+        const resource = createAudioResource(filePath);
+
         player.play(resource);
         connection.subscribe(player);
 
-        // รอให้เล่นจบแล้วออกจากห้อง
+        player.on("error", (err) => {
+          console.error("❌ Player error:", err);
+        });
+
+        player.on(AudioPlayerStatus.Playing, () => {
+          console.log("✅ Playing sound now!");
+        });
+
         player.on(AudioPlayerStatus.Idle, () => {
+          console.log("🛑 Finished playing, disconnecting...");
           const conn = getVoiceConnection(voiceChannel.guild.id);
           if (conn) conn.destroy();
         });
-      } catch (error) {
-        console.error("❌ Error playing sound:", error);
+      } catch (err) {
+        console.error("Error playing sound:", err);
       }
     }
     await generateEmbed(message, "");
