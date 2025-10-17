@@ -140,7 +140,7 @@ client.on("messageCreate", async (message) => {
         const resource = createAudioResource(audioPath, {
           inlineVolume: true,
         });
-        resource.volume?.setVolume(1.0);
+        resource.volume?.setVolume(1.5);
 
         connection.subscribe(player);
         player.play(resource);
