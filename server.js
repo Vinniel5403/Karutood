@@ -33,6 +33,12 @@ const __dirname = dirname(__filename);
 console.log("📦 Voice Dependencies:");
 console.log(generateDependencyReport());
 
+const ban_list = [
+  "หก",
+  "kd",
+  'กด',
+]
+
 // เปิด/สร้าง database
 let db;
 (async () => {
@@ -113,12 +119,12 @@ client.on("messageCreate", async (message) => {
     await generateEmbed(message, "oputo");
   }
 
-  if (content.toLowerCase() === "sd" || content === "หก") {
-    if (content === "หก") {
-      // await message.reply({
-      //   content: "รู้มั้ยเราพลาดเรื่องอะไร",
-      //   files: [join(__dirname, "asset", "oputo.gif")],
-      // });
+  if (content.toLowerCase() === "sd" || content in ban_list) {
+    if (content in ban_list) {
+      await message.reply({
+        content: "รู้มั้ยเราพลาดเรื่องอะไร",
+        files: [join(__dirname, "asset", "oputo.gif")],
+      });
 
       const voiceChannel = message.member?.voice?.channel;
       if (!voiceChannel) {
