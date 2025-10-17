@@ -9,6 +9,7 @@ import {
   ComponentType,
   InteractionType,
 } from "discord.js";
+import { Readable } from "stream";
 import getRandomMemeShorts, { randomQuery } from "./fetch.js";
 import {
   joinVoiceChannel,
@@ -103,6 +104,52 @@ client.on("messageCreate", async (message) => {
   //  if (content ==='test'){
   //   console.log(randomQuery());
   //  }
+
+  if (message.content.toLowerCase() === "testsound") {
+    const voiceChannel = message.member?.voice?.channel;
+    if (!voiceChannel) {
+      return message.reply("❌ คุณต้องอยู่ใน Voice Channel ก่อน");
+    }
+
+    const connection = joinVoiceChannel({
+      channelId: voiceChannel.id,
+      guildId: voiceChannel.guild.id,
+      adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+      selfDeaf: false,
+    });
+
+    // สร้าง sine wave 1 วินาที (48000 Hz, 16-bit, stereo)
+    const sampleRate = 48000;
+    const duration = 1; // 1 วินาที
+    const freq = 440; // 440Hz = A4
+    const samples = sampleRate * duration;
+    const buffer = Buffer.alloc(samples * 2 * 2); // 2 channels, 16-bit
+
+    for (let i = 0; i < samples; i++) {
+      const t = i / sampleRate;
+      const val = Math.floor(Math.sin(2 * Math.PI * freq * t) * 32767); // 16-bit
+      buffer.writeInt16LE(val, i * 4); // left
+      buffer.writeInt16LE(val, i * 4 + 2); // right
+    }
+
+    const stream = Readable.from([buffer]);
+    const resource = createAudioResource(stream, { inlineVolume: true });
+    resource.volume.setVolume(1.0);
+
+    const player = createAudioPlayer();
+    player.play(resource);
+    connection.subscribe(player);
+
+    player.on(AudioPlayerStatus.Playing, () =>
+      console.log("✅ Sine wave playing...")
+    );
+    player.on(AudioPlayerStatus.Idle, () => {
+      console.log("🛑 Finished, disconnecting...");
+      connection.destroy();
+    });
+
+    message.reply("🎵 กำลังเล่นเสียง sine wave 1 วินาที!");
+  }
 
   if (content === "oputo" && message.author.username === "vinniel_") {
     await generateEmbed(message, "oputo");
