@@ -18,8 +18,8 @@ import {
   getVoiceConnection,
   generateDependencyReport,
 } from "@discordjs/voice";
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 import dotenv from "dotenv";
@@ -116,13 +116,13 @@ client.on("messageCreate", async (message) => {
   if (content.toLowerCase() === "sd" || content === "หก") {
     if (content === "หก") {
       await message.reply({
-        content: "น้องรู้มั้ยน้องพลาดตรงไหน",
+        content: "รู้มั้ยเราพลาดเรื่องอะไร",
         files: [join(__dirname, "asset", "oputo.gif")],
       });
 
       const voiceChannel = message.member?.voice?.channel;
       if (!voiceChannel) {
-        return message.reply("❌ คุณต้องอยู่ใน Voice Channel ก่อน");
+        return;
       }
 
       const connection = joinVoiceChannel({
@@ -133,17 +133,9 @@ client.on("messageCreate", async (message) => {
         selfMute: false,
       });
 
-      // บังคับใช้ encryption แบบเก่าเพื่อหลีกเลี่ยง DAVE
-      connection.on('stateChange', (oldState, newState) => {
-        if (newState.status === 'ready') {
-          console.log('✅ Voice connection ready');
-        }
-      });
-
       try {
         const player = createAudioPlayer();
         const audioPath = join(__dirname, "asset", "oputo.mp3");
-        console.log("🎵 Audio file path:", audioPath);
 
         const resource = createAudioResource(audioPath, {
           inlineVolume: true,
@@ -153,17 +145,11 @@ client.on("messageCreate", async (message) => {
         connection.subscribe(player);
         player.play(resource);
 
-        player.on(AudioPlayerStatus.Playing, () => {
-          console.log("✅ Now playing audio!");
-        });
-
         player.on("error", (error) => {
-          console.error("❌ Audio player error:", error);
           connection.destroy();
         });
 
         player.on(AudioPlayerStatus.Idle, () => {
-          console.log("🛑 Audio finished");
           setTimeout(() => {
             connection.destroy();
           }, 500);
@@ -171,8 +157,6 @@ client.on("messageCreate", async (message) => {
 
         await message.reply("🎵 กำลังเล่นเสียง!");
       } catch (err) {
-        console.error("❌ Error:", err);
-        await message.reply(`❌ เกิดข้อผิดพลาด: ${err.message}`);
         connection.destroy();
       }
     }
@@ -182,18 +166,18 @@ client.on("messageCreate", async (message) => {
   if (content.toLowerCase() === "sc" || content === "หแ") {
     if (content === "หแ") {
       message.reply({
-        content: "น้องรู้มั้ยน้องพลาดตรงไหน",
+        content: "รู้มั้ยเราพลาดเรื่องอะไร",
         files: [join(__dirname, "asset", "oputo.gif")],
       });
     }
     if (!db) return message.reply("Database ยังไม่พร้อม ลองใหม่อีกครั้ง");
-    
+
     const userId = message.author.id;
     const rows = await db.all(
       "SELECT ShortsTitle, ShortsUrl FROM collections WHERE userId = ?",
       userId
     );
-    
+
     if (rows.length === 0) {
       await message.reply("คุณยังไม่มี Shorts ที่สะสมเลย!");
     } else {
@@ -206,7 +190,10 @@ client.on("messageCreate", async (message) => {
         const end = start + itemsPerPage;
         const list = rows
           .slice(start, end)
-          .map((row, i) => `${start + i + 1}. [${row.ShortsTitle}](${row.ShortsUrl})`)
+          .map(
+            (row, i) =>
+              `${start + i + 1}. [${row.ShortsTitle}](${row.ShortsUrl})`
+          )
           .join("\n");
 
         return new EmbedBuilder()
@@ -262,11 +249,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const userId = interaction.user.id;
   const now = Date.now();
   const lastTake = takeCooldown.get(userId) || 0;
-  
+
   if (now - lastTake < 5 * 60 * 1000) {
     return;
   }
-  
+
   takeCooldown.set(userId, now);
   const ShortsUrl = interaction.customId.replace("collect_", "");
 
