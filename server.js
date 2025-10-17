@@ -9,6 +9,8 @@ import {
   ComponentType,
   InteractionType,
 } from "discord.js";
+import ffmpeg from 'ffmpeg-static';
+process.env.FFMPEG_PATH = ffmpeg;
 import { Readable } from "stream";
 import getRandomMemeShorts, { randomQuery } from "./fetch.js";
 import {
