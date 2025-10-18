@@ -19,7 +19,7 @@ const keywords = [
   "chefhiro4898",
   "CrunchycatLuna" ,
   "BayashiTV_",
-  "cholay",
+  "โชเล่ย์ ดอกกระโดน",
   "PeeBaoKitchen",
   "Bosscat4444",
   "uma musume",
@@ -27,13 +27,19 @@ const keywords = [
   "มาลี สวยมาก",
   "Overboot",
   "อีสาน",
-
+  "My Mate Nate",
+  "Ishowspeed",
+  "Opztv",
+  "Artist",
+  'Mistake When Drawing',
+  "TheMainManSWE",
+  "พี่เสก",
 
 ];
 
 // ฟังก์ชันสุ่มคำ 3–5 คำ แล้วรวมด้วย OR
 export function randomQuery() {
-  const num = Math.floor(Math.random() * 3 + 1); // เลือก 3-5 คำ (แก้เลขให้ตรงตามต้องการ)
+  const num = Math.floor(Math.random() * 3 + 2); // เลือก 3-5 คำ (แก้เลขให้ตรงตามต้องการ)
   const selected = [];
   const usedIndexes = new Set();
 
