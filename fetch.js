@@ -10,11 +10,8 @@ const count = 10;
 const keywords = [
   "Black People",
   "Instagram",
-  "Fyp",
-  "African",
   "Chinese",
   "Cat",
-  "Indian",
   "Food",
   "Oputo",
   "meme",
@@ -29,6 +26,7 @@ const keywords = [
   "JIMSURIYAV2",
   "มาลี สวยมาก",
   "Overboot",
+  "อีสาน",
 
 
 ];
