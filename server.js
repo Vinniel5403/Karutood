@@ -33,7 +33,7 @@ const __dirname = dirname(__filename);
 console.log("📦 Voice Dependencies:");
 console.log(generateDependencyReport());
 
-const ban_list = ["หก", "kd", "กด"];
+const ban_list = ["หก", "kd", "กด","าก"];
 
 // เปิด/สร้าง database
 let db;
