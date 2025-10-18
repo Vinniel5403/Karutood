@@ -161,7 +161,7 @@ client.on("messageCreate", async (message) => {
       content: "",
       files: [join(__dirname, "asset", "job.jpg")],
     });
-
+  }
   if (content === "oputo" && message.author.username === "vinniel_") {
     await generateEmbed(message, "oputo");
   }
