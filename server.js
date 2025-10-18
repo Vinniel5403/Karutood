@@ -161,10 +161,10 @@ client.on("messageCreate", async (message) => {
   }
 
   if (content.toLowerCase() === "sd" || ban_list.includes(content)) {
-    if (content === "หก" || content === "กด") {
+    if (content === "หก" || content === "กด" ) {
       voice("oputo", "oputo", "รู้มั้ยเราพลาดเรื่องอะไร", message);
     }
-    if (content === 'kd'){
+    if (content === 'kd' || content === 'าก') {
       voice("kd", "kd", "เหตุการณ์นี้แม่ง 1 ในล้านอะ", message);
       return;
     }
