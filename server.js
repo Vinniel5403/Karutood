@@ -156,6 +156,12 @@ client.on("messageCreate", async (message) => {
 
   const content = message.content;
 
+  if (content === 'job'){
+    await message.reply({
+      content: "",
+      files: [join(__dirname, "asset", "job.jpg")],
+    });
+
   if (content === "oputo" && message.author.username === "vinniel_") {
     await generateEmbed(message, "oputo");
   }
