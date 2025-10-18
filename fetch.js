@@ -4,7 +4,7 @@ import { configDotenv } from "dotenv";
 configDotenv();
 
 const API_KEY = process.env.API_KEY;
-const count = 10;
+const count = 50;
 
 // รายการ keyword แนว meme / viral / funny
 const keywords = [
@@ -69,7 +69,7 @@ export default async function getRandomMemeShorts(inputKeyword) {
 
   try {
     // สุ่มหน้าผลลัพธ์ 0–4 หน้า (บาง keyword มีแค่ 1–2 หน้า)
-    const randomPage = Math.floor(Math.random() * 5);
+    const randomPage = Math.floor(Math.random() * 0);
     let pageToken = "";
     let searchData = null;
 
