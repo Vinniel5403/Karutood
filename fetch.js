@@ -17,7 +17,7 @@ const keywords = [
   "meme",
   "ไทย",
   "chefhiro4898",
-  "CrunchycatLuna" ,
+  "CrunchycatLuna",
   "BayashiTV_",
   "โชเล่ย์ ดอกกระโดน",
   "PeeBaoKitchen",
@@ -31,16 +31,16 @@ const keywords = [
   "Ishowspeed",
   "Opztv",
   "Artist",
-  'Mistake When Drawing',
+  "Mistake When Drawing",
   "TheMainManSWE",
   "พี่เสก",
   "Revy Ghosting",
-  "Sushi Monsters"
+  "Sushi Monsters",
 ];
 
-// ฟังก์ชันสุ่มคำ 3–5 คำ แล้วรวมด้วย OR
+// ฟังก์ชันสุ่มคำ 2–5 คำ แล้วรวมด้วย OR
 export function randomQuery() {
-  const num = Math.floor(Math.random() * 3 + 2); // เลือก 3-5 คำ (แก้เลขให้ตรงตามต้องการ)
+  const num = Math.floor(Math.random() * 3 + 2);
   const selected = [];
   const usedIndexes = new Set();
 
@@ -55,32 +55,49 @@ export function randomQuery() {
   return selected.join(" OR ");
 }
 
-
 // แปลง ISO 8601 duration เป็นวินาที
 function parseDuration(duration) {
-  const match = duration.match(/PT(\d+M)?(\d+S)?/);
+  const match = duration.match(/PT(?:(\d+)M)?(?:(\d+)S)?/);
   const minutes = parseInt(match?.[1] || 0);
   const seconds = parseInt(match?.[2] || 0);
   return minutes * 60 + seconds;
 }
 
-export default async function getRandomMemeShorts(keywords) {
-const query = keywords ? keywords : randomQuery();
-  const searchUrl = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&maxResults=${count}&part=snippet&type=video&videoDuration=short&q=${encodeURIComponent(
-    query
-  )}`;
+// ✅ เพิ่มระบบ pageToken
+export default async function getRandomMemeShorts(inputKeyword) {
+  const query = inputKeyword || randomQuery();
 
   try {
-    const searchRes = await fetch(searchUrl);
-    const searchData = await searchRes.json();
+    // สุ่มหน้าผลลัพธ์ 0–4 หน้า (บาง keyword มีแค่ 1–2 หน้า)
+    const randomPage = Math.floor(Math.random() * 5);
+    let pageToken = "";
+    let searchData = null;
 
-    if (!searchData.items) return console.log("❌ ไม่มีข้อมูล");
+    for (let i = 0; i <= randomPage; i++) {
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&maxResults=${count}&part=snippet&type=video&videoDuration=short&q=${encodeURIComponent(
+        query
+      )}${pageToken ? `&pageToken=${pageToken}` : ""}`;
 
+      const res = await fetch(searchUrl);
+      searchData = await res.json();
+
+      if (!searchData.items || searchData.items.length === 0) break;
+      pageToken = searchData.nextPageToken || "";
+      if (!pageToken) break; // ถ้าหมดหน้าแล้วก็หยุด
+    }
+
+    if (!searchData?.items) {
+      console.log("❌ ไม่มีข้อมูลในคำค้นนี้");
+      return null;
+    }
+
+    // ดึง video detail
     const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
     const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds}&key=${API_KEY}`;
     const detailRes = await fetch(detailUrl);
     const detailData = await detailRes.json();
 
+    // กรองคลิปสั้นและมีไลค์เยอะ
     const filtered = detailData.items.filter((v) => {
       const likes = parseInt(v.statistics.likeCount || 0);
       const duration = parseDuration(v.contentDetails.duration || "PT0S");
@@ -89,25 +106,20 @@ const query = keywords ? keywords : randomQuery();
 
     if (filtered.length === 0) return null;
 
+    // สุ่มคลิปจากผลลัพธ์ที่กรองแล้ว
     const randomVid = filtered[Math.floor(Math.random() * filtered.length)];
 
-    // filtered.forEach((v) => {
-    //   console.log(`▶️ ${v.snippet.title}`);
-    //   console.log(`❤️ Likes: ${v.statistics.likeCount}`);
-    //   console.log(`⏱ Duration: ${parseDuration(v.contentDetails.duration)}s`);
-    //   console.log(`🔗 https://www.youtube.com/shorts/${v.id}\n`);
-    // });
-    const result = `🎬 ${randomVid.snippet.title}\n❤️ Likes: ${
-      randomVid.statistics.likeCount
-    }\n⏱ Duration: ${parseDuration(
-      randomVid.contentDetails.duration
-    )}s\n🔗 https://www.youtube.com/shorts/${randomVid.id}`;
+    const result = `🎬 ${randomVid.snippet.title}
+❤️ Likes: ${randomVid.statistics.likeCount}
+⏱ Duration: ${parseDuration(randomVid.contentDetails.duration)}s
+🔗 https://www.youtube.com/shorts/${randomVid.id}`;
 
-    console.log(`🔍 คำค้น: ${query}`);
+    console.log(`🔍 คำค้น: ${query} (Page ${randomPage + 1})`);
     console.log(result);
 
     return result;
   } catch (err) {
     console.error("เกิดข้อผิดพลาด:", err);
+    return null;
   }
 }
