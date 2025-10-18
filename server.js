@@ -10,6 +10,7 @@ import {
   InteractionType,
 } from "discord.js";
 import getRandomMemeShorts, { randomQuery } from "./fetch.js";
+import { GoogleGenAI } from "@google/genai";
 import {
   joinVoiceChannel,
   createAudioPlayer,
@@ -23,6 +24,7 @@ import { dirname, join } from "path";
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 import dotenv from "dotenv";
+import fetch from "node-fetch"; // ใช้ fetch สำหรับเรียก API
 dotenv.config();
 
 // สร้าง __dirname สำหรับ ES modules
@@ -150,12 +152,57 @@ client.on(Events.ClientReady, (readyClient) => {
   console.log(`✅ Logged in as ${readyClient.user.tag}!`);
 });
 
+// 1. [แก้ไข] Import library ของ Google
+
+
+async function genAI(messageText, author) {
+  const ai = new GoogleGenAI({});
+
+
+
+try{
+    const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: `คุณคือพี่ Oputo หรือพี่พุท เป็นผู้ชายอายุ30 คุณคือนักแข่ง Overwatch ที่เก่งมากๆ และเป็นstreamer ที่โคชและสอนเก่งมากๆ ชอบพูดว่า"น้องรู้มั้ยน้องพลาดตรงไหน"เชิงๆ ถามคนดู เพื่อสอนคนดู คุยดีสุภาพ ตอบกลับข้อความต่อไปนี้ในสไตล์ของคุณ:\n\n"${messageText}"\n\nจาก ${author}`,
+  });
+ 
+
+ 
+    
+    return response.text;
+
+  } catch (error) {
+    // 6. [แก้ไข] Error handling (SDK จะโยน error มาถ้ามีปัญหา)
+    console.error("Error calling Google Generative AI:", error);
+
+    // ตรวจสอบว่าเป็น error จาก safety settings หรือไม่
+    // (โครงสร้าง error อาจต่างกันไปขึ้นอยู่กับเวอร์ชัน)
+    if (error.response && error.response.promptFeedback && error.response.promptFeedback.blockReason) {
+      return `พี่ว่าข้อความนี้ไม่ผ่านเซฟตี้ (Reason: ${error.response.promptFeedback.blockReason}) ลองเปลี่ยนคำพูดนะ`;
+    }
+    
+    // ตรวจสอบกรณีที่ response มี แต่ไม่มี text (อาจจะ finishReason = SAFETY)
+    if (error.response && error.response.candidates && error.response.candidates[0].finishReason === 'SAFETY') {
+        return "พี่ว่า Gemini บล็อคคำตอบนี้เพราะติดเซฟตี้ ลองใหม่อีกทีนะ";
+    }
+
+    return "พี่ว่า API มีปัญหา (SDK catch) ลองใหม่อีกทีนะ";
+  }
+}
+
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (message.channel.name !== targetChannel) return;
 
   const content = message.content;
 
+
+  if (message.mentions.has(client.user)) {
+    const replyText = await genAI(content, message.author); // เรียกใช้ genAI
+    await message.reply({
+      content: replyText,
+    });
+  }
   if (content === 'job'){
     await message.reply({
       content: "",
