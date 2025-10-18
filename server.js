@@ -77,7 +77,7 @@ async function voice(sound, gif, text, userMessage) {
     const resource = createAudioResource(audioPath, {
       inlineVolume: true,
     });
-    resource.volume?.setVolume(2.0);
+    resource.volume?.setVolume(1.5);
 
     connection.subscribe(player);
     player.play(resource);
