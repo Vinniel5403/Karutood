@@ -34,7 +34,8 @@ const keywords = [
   'Mistake When Drawing',
   "TheMainManSWE",
   "พี่เสก",
-  "Revy Ghosting"
+  "Revy Ghosting",
+  "Sushi Monsters"
 ];
 
 // ฟังก์ชันสุ่มคำ 3–5 คำ แล้วรวมด้วย OR
