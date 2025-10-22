@@ -39,6 +39,7 @@ const ban_list = ["หก", "kd", "กด","าก"];
 
 // เปิด/สร้าง database
 let db;
+// ขยาย database ถ้ายังไม่มี column username หรือ uid
 (async () => {
   db = await open({
     filename: "./karutood.sqlite",
@@ -48,8 +49,18 @@ let db;
     userId TEXT,
     ShortsUrl TEXT,
     ShortsTitle TEXT,
+    username TEXT,
+    uid TEXT,
     PRIMARY KEY (userId, ShortsUrl)
   )`);
+  // เพิ่ม column username ถ้ายังไม่มี
+  try {
+    await db.run("ALTER TABLE collections ADD COLUMN username TEXT");
+  } catch (e) {}
+  // เพิ่ม column uid ถ้ายังไม่มี
+  try {
+    await db.run("ALTER TABLE collections ADD COLUMN uid TEXT");
+  } catch (e) {}
 })();
 
 async function voice(sound, gif, text, userMessage) {
@@ -214,6 +225,14 @@ client.on("messageCreate", async (message) => {
   }
 
   if (content.toLowerCase() === "sd" || ban_list.includes(content)) {
+    // อัปเดต username ในฐานข้อมูลเมื่อ user.id ตรง
+    if (db) {
+      await db.run(
+        "UPDATE collections SET username = ? WHERE userId = ?",
+        message.author.username,
+        message.author.id
+      );
+    }
     if (content === "หก" || content === "กด" ) {
       voice("oputo", "oputo", "รู้มั้ยเราพลาดเรื่องอะไร", message);
     }
@@ -225,6 +244,14 @@ client.on("messageCreate", async (message) => {
   }
 
   if (content.toLowerCase() === "sc" || content === "หแ") {
+    // อัปเดต username ในฐานข้อมูลเมื่อ user.id ตรง
+    if (db) {
+      await db.run(
+        "UPDATE collections SET username = ? WHERE userId = ?",
+        message.author.username,
+        message.author.id
+      );
+    }
     if (content === "หแ") {
       message.reply({
         content: "รู้มั้ยเราพลาดเรื่องอะไร",
@@ -303,6 +330,14 @@ client.on("messageCreate", async (message) => {
   }
   // เพิ่ม sc @username เพื่อดู collection ของคนอื่น
   if (content.toLowerCase().startsWith("sc ") && message.mentions.users.size > 0) {
+    // อัปเดต username ในฐานข้อมูลเมื่อ user.id ตรง
+    if (db) {
+      await db.run(
+        "UPDATE collections SET username = ? WHERE userId = ?",
+        message.author.username,
+        message.author.id
+      );
+    }
     if (!db) return message.reply("พี่ว่า ฐานข้อมูลพัง");
     const mentionedUser = message.mentions.users.first();
     const userId = mentionedUser.id;
@@ -395,11 +430,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   const ShortsTitle = interaction.message.content.split("\n")[0] || ShortsUrl;
 
+  // ดึง uid จาก ShortsUrl เฉพาะส่วนหลัง /shorts/
+  let uid = ShortsUrl;
+  const shortsMatch = ShortsUrl.match(/\/shorts\/([\w-]+)/);
+  if (shortsMatch) {
+    uid = shortsMatch[1];
+  }
+
+  // อัปเดต username ให้ทุก collection ของ user นี้ ถ้า username เปลี่ยน
+  if (db) {
+    await db.run(
+      "UPDATE collections SET username = ? WHERE userId = ?",
+      interaction.user.username,
+      interaction.user.id
+    );
+  }
   await db.run(
-    "INSERT OR IGNORE INTO collections (userId, ShortsUrl, ShortsTitle) VALUES (?, ?, ?)",
+    "INSERT OR IGNORE INTO collections (userId, ShortsUrl, ShortsTitle, username, uid) VALUES (?, ?, ?, ?, ?)",
     userId,
     ShortsUrl,
-    ShortsTitle
+    ShortsTitle,
+    interaction.user.username,
+    uid // เก็บ uid เฉพาะหลัง /shorts/
   );
 
   await interaction.message
