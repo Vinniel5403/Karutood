@@ -178,7 +178,7 @@ try{
     // ตรวจสอบว่าเป็น error จาก safety settings หรือไม่
     // (โครงสร้าง error อาจต่างกันไปขึ้นอยู่กับเวอร์ชัน)
     if (error.response && error.response.promptFeedback && error.response.promptFeedback.blockReason) {
-      return `พี่ว่าข้อความนี้ไม่ผ่านเซฟตี้ (Reason: ${error.response.promptFeedback.blockReason}) ลองเปลี่ยนคำพูดนะ`;
+      return `พี่ว่าข้อความนี้ไม่ผ่านเซฟตตี้ (Reason: ${error.response.promptFeedback.blockReason}) ลองเปลี่ยนคำพูดนะ`;
     }
     
     // ตรวจสอบกรณีที่ response มี แต่ไม่มี text (อาจจะ finishReason = SAFETY)
@@ -300,6 +300,69 @@ client.on("messageCreate", async (message) => {
         sentMessage.edit({ components: [] });
       });
     }
+  }
+  // เพิ่ม sc @username เพื่อดู collection ของคนอื่น
+  if (content.toLowerCase().startsWith("sc ") && message.mentions.users.size > 0) {
+    if (!db) return message.reply("พี่ว่า ฐานข้อมูลพัง");
+    const mentionedUser = message.mentions.users.first();
+    const userId = mentionedUser.id;
+    const rows = await db.all(
+      "SELECT ShortsTitle, ShortsUrl FROM collections WHERE userId = ?",
+      userId
+    );
+    if (rows.length === 0) {
+      await message.reply(`${mentionedUser.username} ยังไม่มี Shorts สะสมเลย`);
+    } else {
+      const itemsPerPage = 5;
+      const totalPages = Math.ceil(rows.length / itemsPerPage);
+      let page = 0;
+      const generatePageEmbed = (page) => {
+        const start = page * itemsPerPage;
+        const end = start + itemsPerPage;
+        const list = rows
+          .slice(start, end)
+          .map(
+            (row, i) =>
+              `${start + i + 1}. [${row.ShortsTitle}](${row.ShortsUrl})`
+          )
+          .join("\n");
+        return new EmbedBuilder()
+          .setTitle(`Shorts ของ ${mentionedUser.username} (หน้า ${page + 1}/${totalPages})`)
+          .setDescription(list)
+          .setColor(0x00ff00)
+          .setFooter({ text: "ขอบคุณที่สะสม Shorts!" });
+      };
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("prev")
+          .setLabel("⬅ ก่อนหน้า")
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId("next")
+          .setLabel("ถัดไป ➡")
+          .setStyle(ButtonStyle.Primary)
+      );
+      const sentMessage = await message.reply({
+        embeds: [generatePageEmbed(page)],
+        components: [row],
+      });
+      const collector = sentMessage.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 120000,
+      });
+      collector.on("collect", (i) => {
+        if (i.user.id !== message.author.id) {
+          return i.reply({ content: "คุณไม่สามารถกดได้!", ephemeral: true });
+        }
+        if (i.customId === "prev") page = page > 0 ? page - 1 : totalPages - 1;
+        if (i.customId === "next") page = (page + 1) % totalPages;
+        i.update({ embeds: [generatePageEmbed(page)] });
+      });
+      collector.on("end", () => {
+        sentMessage.edit({ components: [] });
+      });
+    }
+    return;
   }
 });
 
