@@ -163,6 +163,87 @@ client.on(Events.ClientReady, (readyClient) => {
   console.log(`✅ Logged in as ${readyClient.user.tag}!`);
 });
 
+// --- Random drops configuration ---
+const DROPS_MIN_SECONDS = parseInt(process.env.DROPS_MIN_SECONDS || "300", 10); // default 5 minutes
+const DROPS_MAX_SECONDS = parseInt(process.env.DROPS_MAX_SECONDS || "1800", 10); // default 30 minutes
+
+function randomDelayMs() {
+  const min = Math.max(0, DROPS_MIN_SECONDS);
+  const max = Math.max(min, DROPS_MAX_SECONDS);
+  return Math.floor(Math.random() * (max - min + 1) + min) * 1000;
+}
+
+async function sendShortsDropToChannel(channel) {
+  try {
+    const Shorts = await getRandomMemeShorts();
+    if (!Shorts) return;
+
+    let ShortsText = Shorts;
+    let ShortsUrl = Shorts;
+    let ShortsTitle = "";
+    if (typeof Shorts === "object" && Shorts.url) {
+      ShortsText = Shorts.text || Shorts.url;
+      ShortsUrl = Shorts.url;
+      ShortsTitle = Shorts.title || Shorts.text || Shorts.url;
+    } else {
+      const urlMatch = Shorts.match(/https?:\/\/\S+/);
+      ShortsUrl = urlMatch ? urlMatch[0] : Shorts;
+      ShortsTitle = Shorts;
+    }
+    ShortsText = `${ShortsTitle}`;
+
+    const collectButton = new ButtonBuilder()
+      .setCustomId(`collect_${ShortsUrl}`.slice(0, 100))
+      .setLabel("Take")
+      .setStyle(ButtonStyle.Success);
+    const row = new ActionRowBuilder().addComponents(collectButton);
+
+    // Ensure channel can send
+    if (!channel || typeof channel.send !== "function") return;
+
+    await channel.send({ content: ShortsText, components: [row] });
+    console.log(`📦 Dropped Shorts to #${channel.name} in ${channel.guild?.name || "unknown guild"}`);
+  } catch (err) {
+    console.error("Error sending drop to channel", channel?.id, err);
+  }
+}
+
+async function sendDropsOnce() {
+  for (const [guildId, guild] of client.guilds.cache) {
+    try {
+      // find a channel by name
+      const channel = guild.channels.cache.find((c) => c.name === targetChannel && typeof c.send === "function");
+      if (channel) {
+        await sendShortsDropToChannel(channel);
+      }
+    } catch (e) {
+      console.error("Error iterating guilds for drops", guildId, e);
+    }
+  }
+}
+
+function scheduleNextDrop() {
+  const delay = randomDelayMs();
+  console.log(`⏱️ Next drop in ${Math.round(delay / 1000)}s`);
+  setTimeout(async () => {
+    await sendDropsOnce();
+    scheduleNextDrop();
+  }, delay);
+}
+
+function startRandomDrops() {
+  // only start when client is ready and there is at least one guild
+  if (!client.isReady()) return;
+  console.log("🎯 Starting random drops");
+  // start after a short initial delay to allow caches to populate
+  setTimeout(() => scheduleNextDrop(), 5000);
+}
+
+client.on(Events.ClientReady, () => {
+  // start the drop loop once the bot is ready
+  startRandomDrops();
+});
+
 // 1. [แก้ไข] Import library ของ Google
 
 
