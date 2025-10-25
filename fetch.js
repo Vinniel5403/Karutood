@@ -19,7 +19,6 @@ const keywords = [
   "chefhiro4898",
   "CrunchycatLuna",
   "BayashiTV_",
-  "โชเล่ย์ ดอกกระโดน",
   "PeeBaoKitchen",
   "Bosscat4444",
   "uma musume",
@@ -36,11 +35,23 @@ const keywords = [
   "พี่เสก",
   "Revy Ghosting",
   "Sushi Monsters",
+  "ไวรัล",
+  "shorts",
+  "vtuber",
+  "undertale",
+  "mukbang",
+  "Ado",
+  "Tiktok",
+  "Laibaht",
+  "Fumihouse",
+  "นานาโฮชิ นานะ / 七星ナナ",
+  "Edit",
+  "Anime Edit"
 ];
 
 // ฟังก์ชันสุ่มคำ 2–5 คำ แล้วรวมด้วย OR
 export function randomQuery() {
-  const num = Math.floor(Math.random() * 3 + 2);
+  const num = Math.floor(Math.random() * 1 + 0);
   const selected = [];
   const usedIndexes = new Set();
 
