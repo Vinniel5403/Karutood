@@ -170,7 +170,7 @@ const DROPS_MAX_SECONDS = parseInt(process.env.DROPS_MAX_SECONDS || "1800", 10);
 function randomDelayMs() {
   const min = Math.max(0, DROPS_MIN_SECONDS);
   const max = Math.max(min, DROPS_MAX_SECONDS);
-  return Math.floor(Math.random() * (max - min + 1) + min) * 1000;
+  return Math.floor(Math.random() * (max - min + 1) + min) * 10000;
 }
 
 async function sendShortsDropToChannel(channel) {
