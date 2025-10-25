@@ -51,7 +51,7 @@ const keywords = [
 
 // ฟังก์ชันสุ่มคำ 2–5 คำ แล้วรวมด้วย OR
 export function randomQuery() {
-  const num = Math.floor(Math.random() * 1 + 0);
+  const num = Math.floor(Math.random() * 0 + 1);
   const selected = [];
   const usedIndexes = new Set();
 
