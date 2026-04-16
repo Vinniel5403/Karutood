@@ -392,7 +392,9 @@ client.on("messageCreate", async (message) => {
   // sg @user <id> — ให้ short คนอื่น
   if (/^sg\s/i.test(content) && message.mentions.users.size > 0) {
     if (!db) return message.reply("พี่ว่า ฐานข้อมูลพัง");
-    const idMatch = content.match(/\b(\d+)\b/);
+    // ลบ mention ออกก่อน ไม่งั้น regex จับ user id
+    const stripped = content.replace(/<@!?\d+>/g, " ");
+    const idMatch = stripped.match(/\b(\d+)\b/);
     if (!idMatch) return message.reply("ใช้: `sg @user <id>`");
     const id = parseInt(idMatch[1]);
     const recipient = message.mentions.users.first();
