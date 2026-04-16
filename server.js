@@ -61,7 +61,38 @@ let db;
   try {
     await db.run("ALTER TABLE collections ADD COLUMN uid TEXT");
   } catch (e) {}
+  // เพิ่ม column likes สำหรับ rarity/ระบบขาย
+  try {
+    await db.run("ALTER TABLE collections ADD COLUMN likes INTEGER DEFAULT 0");
+  } catch (e) {}
+
+  // กระเป๋าเงิน
+  await db.run(`CREATE TABLE IF NOT EXISTS wallets (
+    userId TEXT PRIMARY KEY,
+    money INTEGER DEFAULT 0
+  )`);
 })();
+
+// ราคาขายตาม likes
+function priceFromLikes(likes) {
+  const n = parseInt(likes || 0);
+  return Math.max(1, Math.floor(Math.log10(n + 1) * 20));
+}
+
+async function getMoney(userId) {
+  if (!db) return 0;
+  const row = await db.get("SELECT money FROM wallets WHERE userId = ?", userId);
+  return row?.money || 0;
+}
+
+async function addMoney(userId, amount) {
+  if (!db) return;
+  await db.run(
+    "INSERT INTO wallets (userId, money) VALUES (?, ?) ON CONFLICT(userId) DO UPDATE SET money = money + excluded.money",
+    userId,
+    amount
+  );
+}
 
 async function voice(sound, gif, text, userMessage) {
   const message = userMessage;
@@ -149,6 +180,7 @@ async function generateEmbed(userMessage, page) {
 const sdCooldown = new Map();
 const takeCooldown = new Map();
 const targetChannel = "peace-droper";
+const SSHOP_DROP_PRICE = parseInt(process.env.SSHOP_DROP_PRICE || "50", 10);
 
 const client = new Client({
   intents: [
@@ -301,6 +333,61 @@ client.on("messageCreate", async (message) => {
       files: [join(__dirname, "asset", "job.jpg")],
     });
   }
+
+  // sv <id> — ดู short โดย id (ของใครก็ได้)
+  if (/^sv\s+\d+$/i.test(content)) {
+    if (!db) return message.reply("พี่ว่า ฐานข้อมูลพัง");
+    const id = parseInt(content.split(/\s+/)[1]);
+    const row = await db.get(
+      "SELECT rowid AS id, userId, username, ShortsTitle, ShortsUrl, likes FROM collections WHERE rowid = ?",
+      id
+    );
+    if (!row) return message.reply(`พี่ว่าไม่มี Short id #${id}`);
+    const price = priceFromLikes(row.likes);
+    return message.reply(
+      `🆔 \`#${row.id}\`\n🎬 [${row.ShortsTitle}](${row.ShortsUrl})\n❤️ Likes: ${row.likes || 0}\n💰 ราคา: ${price}\n👤 เจ้าของ: ${row.username || row.userId}`
+    );
+  }
+
+  // sell <id> — ขาย short ของตัวเอง
+  if (/^sell\s+\d+$/i.test(content)) {
+    if (!db) return message.reply("พี่ว่า ฐานข้อมูลพัง");
+    const id = parseInt(content.split(/\s+/)[1]);
+    const row = await db.get(
+      "SELECT rowid AS id, userId, ShortsTitle, likes FROM collections WHERE rowid = ?",
+      id
+    );
+    if (!row) return message.reply(`พี่ว่าไม่มี Short id #${id}`);
+    if (row.userId !== message.author.id)
+      return message.reply("พี่ว่า Short นี้ไม่ใช่ของน้อง");
+    const price = priceFromLikes(row.likes);
+    await db.run("DELETE FROM collections WHERE rowid = ?", id);
+    await addMoney(message.author.id, price);
+    const total = await getMoney(message.author.id);
+    return message.reply(`💸 ขาย \`#${id}\` "${row.ShortsTitle}" ได้ ${price} บาท (รวม ${total})`);
+  }
+
+  // bal — เช็คเงิน
+  if (content.toLowerCase() === "bal") {
+    const total = await getMoney(message.author.id);
+    return message.reply(`💰 น้องมี ${total} บาท`);
+  }
+
+  // sshop / sshop buy drop — ร้านค้า
+  if (content.toLowerCase() === "sshop") {
+    const total = await getMoney(message.author.id);
+    return message.reply(
+      `🛒 **SShop**\n\`drop\` — Extra Drop ทันที (${SSHOP_DROP_PRICE} บาท)\n\nเงินน้อง: ${total}\nสั่งซื้อ: \`sshop buy drop\``
+    );
+  }
+  if (/^sshop\s+buy\s+drop$/i.test(content)) {
+    const total = await getMoney(message.author.id);
+    if (total < SSHOP_DROP_PRICE)
+      return message.reply(`พี่ว่าเงินไม่พอ ต้อง ${SSHOP_DROP_PRICE} บาท (น้องมี ${total})`);
+    await addMoney(message.author.id, -SSHOP_DROP_PRICE);
+    await message.reply(`✅ ซื้อแล้ว! กำลัง drop ให้...`);
+    return sendShortsDropToChannel(message.channel);
+  }
   if (content === "oputo" && message.author.username === "vinniel_") {
     await generateEmbed(message, "oputo");
   }
@@ -343,7 +430,7 @@ client.on("messageCreate", async (message) => {
 
     const userId = message.author.id;
     const rows = await db.all(
-      "SELECT ShortsTitle, ShortsUrl FROM collections WHERE userId = ?",
+      "SELECT rowid AS id, ShortsTitle, ShortsUrl, likes FROM collections WHERE userId = ?",
       userId
     );
 
@@ -360,8 +447,8 @@ client.on("messageCreate", async (message) => {
         const list = rows
           .slice(start, end)
           .map(
-            (row, i) =>
-              `${start + i + 1}. [${row.ShortsTitle}](${row.ShortsUrl})`
+            (row) =>
+              `\`#${row.id}\` [${row.ShortsTitle}](${row.ShortsUrl}) — ❤️ ${row.likes || 0} • 💰 ${priceFromLikes(row.likes)}`
           )
           .join("\n");
 
@@ -423,7 +510,7 @@ client.on("messageCreate", async (message) => {
     const mentionedUser = message.mentions.users.first();
     const userId = mentionedUser.id;
     const rows = await db.all(
-      "SELECT ShortsTitle, ShortsUrl FROM collections WHERE userId = ?",
+      "SELECT rowid AS id, ShortsTitle, ShortsUrl, likes FROM collections WHERE userId = ?",
       userId
     );
     if (rows.length === 0) {
@@ -438,8 +525,8 @@ client.on("messageCreate", async (message) => {
         const list = rows
           .slice(start, end)
           .map(
-            (row, i) =>
-              `${start + i + 1}. [${row.ShortsTitle}](${row.ShortsUrl})`
+            (row) =>
+              `\`#${row.id}\` [${row.ShortsTitle}](${row.ShortsUrl}) — ❤️ ${row.likes || 0} • 💰 ${priceFromLikes(row.likes)}`
           )
           .join("\n");
         return new EmbedBuilder()
@@ -509,7 +596,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (exists) return;
 
-  const ShortsTitle = interaction.message.content.split("\n")[0] || ShortsUrl;
+  const msgContent = interaction.message.content;
+  const ShortsTitle = msgContent.split("\n")[0] || ShortsUrl;
+
+  // ดึง likes จากข้อความ drop
+  const likesMatch = msgContent.match(/Likes:\s*(\d+)/i);
+  const likes = likesMatch ? parseInt(likesMatch[1]) : 0;
 
   // ดึง uid จาก ShortsUrl เฉพาะส่วนหลัง /shorts/
   let uid = ShortsUrl;
@@ -526,18 +618,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
       interaction.user.id
     );
   }
-  await db.run(
-    "INSERT OR IGNORE INTO collections (userId, ShortsUrl, ShortsTitle, username, uid) VALUES (?, ?, ?, ?, ?)",
+  const ins = await db.run(
+    "INSERT OR IGNORE INTO collections (userId, ShortsUrl, ShortsTitle, username, uid, likes) VALUES (?, ?, ?, ?, ?, ?)",
     userId,
     ShortsUrl,
     ShortsTitle,
     interaction.user.username,
-    uid // เก็บ uid เฉพาะหลัง /shorts/
+    uid,
+    likes
   );
+
+  // หา id (rowid) ของ collection ที่เพิ่ง insert
+  const collected = await db.get(
+    "SELECT rowid AS id FROM collections WHERE userId = ? AND ShortsUrl = ?",
+    userId,
+    ShortsUrl
+  );
+  const cid = collected?.id;
 
   await interaction.message
     .edit({
-      content: `${interaction.message.content}\n\n<@${userId}> สะสม Shorts นี้แล้ว! ❌`,
+      content: `${msgContent}\n\n<@${userId}> สะสม Shorts นี้แล้ว! 🆔 \`${cid}\` ❌`,
       components: [],
     })
     .catch(() => {});

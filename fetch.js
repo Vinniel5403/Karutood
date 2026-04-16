@@ -51,7 +51,7 @@ const keywords = [
 
 // ฟังก์ชันสุ่มคำ 2–5 คำ แล้วรวมด้วย OR
 export function randomQuery() {
-  const num = Math.floor(Math.random() * 0 + 1);
+  const num = Math.floor(Math.random() * 0 + 4);
   const selected = [];
   const usedIndexes = new Set();
 
@@ -74,60 +74,79 @@ function parseDuration(duration) {
   return minutes * 60 + seconds;
 }
 
-// ✅ เพิ่มระบบ pageToken
+// cache pool — fetch ทีเก็บไว้, pop จนหมด แล้วค่อย fetch ใหม่
+const poolCache = new Map(); // key → { items: [], query }
+
+function formatVideo(v) {
+  return `🎬 ${v.snippet.title}
+❤️ Likes: ${v.statistics.likeCount}
+⏱ Duration: ${parseDuration(v.contentDetails.duration)}s
+🔗 https://www.youtube.com/shorts/${v.id}`;
+}
+
+async function fetchPool(query) {
+  const randomPage = Math.floor(Math.random() * 0);
+  let pageToken = "";
+  let searchData = null;
+
+  for (let i = 0; i <= randomPage; i++) {
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&maxResults=${count}&part=snippet&type=video&videoDuration=short&q=${encodeURIComponent(
+      query
+    )}${pageToken ? `&pageToken=${pageToken}` : ""}`;
+
+    const res = await fetch(searchUrl);
+    searchData = await res.json();
+
+    if (!searchData.items || searchData.items.length === 0) break;
+    pageToken = searchData.nextPageToken || "";
+    if (!pageToken) break;
+  }
+
+  if (!searchData?.items?.length) return [];
+
+  const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
+  const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds}&key=${API_KEY}`;
+  const detailRes = await fetch(detailUrl);
+  const detailData = await detailRes.json();
+
+  return (detailData.items || []).filter((v) => {
+    const likes = parseInt(v.statistics.likeCount || 0);
+    const duration = parseDuration(v.contentDetails.duration || "PT0S");
+    return duration < 80 && likes >= 10;
+  });
+}
+
 export default async function getRandomMemeShorts(inputKeyword) {
-  const query = inputKeyword || randomQuery();
-
   try {
-    // สุ่มหน้าผลลัพธ์ 0–4 หน้า (บาง keyword มีแค่ 1–2 หน้า)
-    const randomPage = Math.floor(Math.random() * 0);
-    let pageToken = "";
-    let searchData = null;
+    const cacheKey = inputKeyword || "__random__";
+    let entry = poolCache.get(cacheKey);
 
-    for (let i = 0; i <= randomPage; i++) {
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&maxResults=${count}&part=snippet&type=video&videoDuration=short&q=${encodeURIComponent(
-        query
-      )}${pageToken ? `&pageToken=${pageToken}` : ""}`;
-
-      const res = await fetch(searchUrl);
-      searchData = await res.json();
-
-      if (!searchData.items || searchData.items.length === 0) break;
-      pageToken = searchData.nextPageToken || "";
-      if (!pageToken) break; // ถ้าหมดหน้าแล้วก็หยุด
+    // refill ถ้า empty หรือไม่เคย fetch
+    if (!entry || entry.items.length === 0) {
+      const query = inputKeyword || randomQuery();
+      const items = await fetchPool(query);
+      if (items.length === 0) {
+        poolCache.delete(cacheKey);
+        console.log("❌ ไม่มีข้อมูลในคำค้นนี้");
+        return null;
+      }
+      // shuffle
+      for (let i = items.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [items[i], items[j]] = [items[j], items[i]];
+      }
+      entry = { items, query };
+      poolCache.set(cacheKey, entry);
+      console.log(`🔄 fetch ใหม่: ${query} (${items.length} clips)`);
     }
 
-    if (!searchData?.items) {
-      console.log("❌ ไม่มีข้อมูลในคำค้นนี้");
-      return null;
-    }
+    // pop 1
+    const vid = entry.items.pop();
+    if (entry.items.length === 0) poolCache.delete(cacheKey);
 
-    // ดึง video detail
-    const videoIds = searchData.items.map((item) => item.id.videoId).join(",");
-    const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds}&key=${API_KEY}`;
-    const detailRes = await fetch(detailUrl);
-    const detailData = await detailRes.json();
-
-    // กรองคลิปสั้นและมีไลค์เยอะ
-    const filtered = detailData.items.filter((v) => {
-      const likes = parseInt(v.statistics.likeCount || 0);
-      const duration = parseDuration(v.contentDetails.duration || "PT0S");
-      return duration < 80 && likes >= 10;
-    });
-
-    if (filtered.length === 0) return null;
-
-    // สุ่มคลิปจากผลลัพธ์ที่กรองแล้ว
-    const randomVid = filtered[Math.floor(Math.random() * filtered.length)];
-
-    const result = `🎬 ${randomVid.snippet.title}
-❤️ Likes: ${randomVid.statistics.likeCount}
-⏱ Duration: ${parseDuration(randomVid.contentDetails.duration)}s
-🔗 https://www.youtube.com/shorts/${randomVid.id}`;
-
-    console.log(`🔍 คำค้น: ${query} (Page ${randomPage + 1})`);
+    const result = formatVideo(vid);
+    console.log(`🔍 คำค้น: ${entry.query} (เหลือ ${entry.items.length})`);
     console.log(result);
-
     return result;
   } catch (err) {
     console.error("เกิดข้อผิดพลาด:", err);
