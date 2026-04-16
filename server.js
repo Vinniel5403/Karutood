@@ -388,6 +388,43 @@ client.on("messageCreate", async (message) => {
     await message.reply(`✅ ซื้อแล้ว! กำลัง drop ให้...`);
     return sendShortsDropToChannel(message.channel);
   }
+
+  // sg @user <id> — ให้ short คนอื่น
+  if (/^sg\s/i.test(content) && message.mentions.users.size > 0) {
+    if (!db) return message.reply("พี่ว่า ฐานข้อมูลพัง");
+    const idMatch = content.match(/\b(\d+)\b/);
+    if (!idMatch) return message.reply("ใช้: `sg @user <id>`");
+    const id = parseInt(idMatch[1]);
+    const recipient = message.mentions.users.first();
+    if (recipient.id === message.author.id)
+      return message.reply("พี่ว่า ให้ตัวเองทำไม");
+    if (recipient.bot) return message.reply("พี่ว่า ให้บอทไม่ได้");
+
+    const row = await db.get(
+      "SELECT rowid AS id, userId, ShortsTitle, ShortsUrl FROM collections WHERE rowid = ?",
+      id
+    );
+    if (!row) return message.reply(`พี่ว่าไม่มี Short id #${id}`);
+    if (row.userId !== message.author.id)
+      return message.reply("พี่ว่า Short นี้ไม่ใช่ของน้อง");
+
+    const dup = await db.get(
+      "SELECT 1 FROM collections WHERE userId = ? AND ShortsUrl = ?",
+      recipient.id,
+      row.ShortsUrl
+    );
+    if (dup) return message.reply(`พี่ว่า ${recipient.username} มี Short นี้อยู่แล้ว`);
+
+    await db.run(
+      "UPDATE collections SET userId = ?, username = ? WHERE rowid = ?",
+      recipient.id,
+      recipient.username,
+      id
+    );
+    return message.reply(
+      `🎁 <@${message.author.id}> ให้ \`#${id}\` "${row.ShortsTitle}" แก่ <@${recipient.id}>`
+    );
+  }
   if (content === "oputo" && message.author.username === "vinniel_") {
     await generateEmbed(message, "oputo");
   }
